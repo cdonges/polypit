@@ -80,4 +80,6 @@ Blocks fall into a pit; rotate and move them to fill complete layers, which then
 
 The manual doesn't specify exact scoring, fall speeds or the pit sizes of the predefined setups, so those are approximations. Graphics and sound are original to this clone; copy protection and the multi-platform graphics modes are omitted.
 
+Dedicated to the public domain under [CC0 1.0](LICENSE): do whatever you like with it.
+
 *Blockout* is a trademark of its respective owners. Polypit is an unofficial, independent fan project and is not affiliated with them.
