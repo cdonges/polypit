@@ -66,7 +66,7 @@ Blocks fall into a pit; rotate and move them to fill complete layers, which then
 - **Pit:** width and length 3-7, depth 6-18.
 - **Setups:** Flat Fun, 3-D Mania, Out of Control, or a custom one. "Write Setup" saves it in the browser.
 - **Modes:** Start Game (levels 0-9), Practice Mode (blocks only fall when you press Space), Demo (the computer plays).
-- **Hall of Fame:** a separate top ten per block set and pit size, stored server-side in SQLite (localStorage when no server is reachable).
+- **Hall of Fame:** view it from the main menu (left/right switches between setups). A separate top ten per block set and pit size, stored server-side in SQLite (localStorage when no server is reachable).
 
 ## Layout
 

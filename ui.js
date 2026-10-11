@@ -428,6 +428,7 @@
         { label: 'Write Setup', hotkey: 'w', act: () => { store.set('polypit.setup', setup); } },
         { label: 'Practice Mode', hotkey: 'p', act: () => setScreen(playScreen('practice', 0)) },
         { label: 'Demo', hotkey: 'd', act: () => startDemo() },
+        { label: 'Hall of Fame', hotkey: 'f', act: () => setScreen(hofViewScreen()) },
         { label: 'Help', hotkey: 'h', act: () => setScreen(helpScreen()) },
         { label: 'Quit Game', hotkey: 'q', act: () => setScreen(titleScreen()) },
       ],
@@ -609,6 +610,42 @@
       },
       draw() { drawBackdrop(); },
     };
+    return me;
+  }
+  // Read-only Hall of Fame browser, reachable from the main menu.
+  function hofViewScreen() {
+    const views = [{ label: 'Current setup', s: setup }].concat(
+      Object.keys(PRESETS).map((n) => ({ label: n, s: Object.assign({}, setup, PRESETS[n]) })));
+    let i = 0;
+    const el = document.createElement('div');
+    el.className = 'panel';
+    function render() {
+      const v = views[i], list = loadHof(v.s);
+      let html = `<h2>HALL OF FAME</h2><div class="hint" style="margin:-6px 0 8px">${esc(v.label)} \u00b7 ${SET_NAMES[v.s.set]} set \u00b7 pit ${pitText(v.s)}</div><table class="hof">`;
+      for (let n = 0; n < 10; n++) {
+        const r = list[n];
+        html += `<tr><td>${n + 1}.</td><td>${r ? esc(r.name || '---') : ''}</td><td class="r">${r ? r.score : ''}</td></tr>`;
+      }
+      html += `</table><div class="hint">\u2190 \u2192 other setups \u00b7 any other key: back (${i + 1}/${views.length})</div>`;
+      el.innerHTML = html;
+    }
+    function show() {
+      render();
+      const v = views[i];
+      refreshHof(v.s).then(() => { if (screen === me && views[i] === v) render(); });
+    }
+    const me = {
+      enter() { ui.appendChild(el); show(); },
+      key(e) {
+        if (e.code === 'ArrowLeft') { i = (i + views.length - 1) % views.length; show(); return true; }
+        if (e.code === 'ArrowRight') { i = (i + 1) % views.length; show(); return true; }
+        if (/^(Shift|Control|Alt|Meta)/.test(e.code)) return false;
+        setScreen(mainMenu());
+        return true;
+      },
+      draw() { drawBackdrop(); },
+    };
+    el.addEventListener('click', () => setScreen(mainMenu()));
     return me;
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
