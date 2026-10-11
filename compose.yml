@@ -1,0 +1,20 @@
+services:
+  polypit:
+    build: .
+    # Or use a published image instead of building locally:
+    # image: ghcr.io/cdonges/polypit:latest
+    ports:
+      # Bound to localhost only: nginx must be the sole way in, otherwise
+      # clients could send a fake X-Forwarded-For and spoof their logged IP.
+      - "127.0.0.1:8000:8000"
+    environment:
+      PORT: "8000"
+      # Running behind nginx: record the client IP from X-Forwarded-For
+      TRUST_PROXY: "1"
+      POLYPIT_DB: /data/polypit.db
+    volumes:
+      - polypit-data:/data
+    restart: unless-stopped
+
+volumes:
+  polypit-data:
