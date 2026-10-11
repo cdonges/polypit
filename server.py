@@ -63,7 +63,12 @@ STATIC = {
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/core.js": ("core.js", "text/javascript; charset=utf-8"),
     "/ui.js": ("ui.js", "text/javascript; charset=utf-8"),
+    "/favicon.svg": ("favicon.svg", "image/svg+xml"),
+    "/favicon.png": ("favicon.png", "image/png"),
+    "/favicon.ico": ("favicon.png", "image/png"),  # browsers request this path by default
+    "/apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
 }
+CACHEABLE = {"image/svg+xml", "image/png"}
 KEY_RE = re.compile(r"^polypit\.hof\.(flat|basic|extended)\.\d{1,2}x\d{1,2}x\d{1,2}$")
 
 
@@ -114,7 +119,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "max-age=86400" if ctype in CACHEABLE else "no-store")
         self.end_headers()
         self.wfile.write(data)
 

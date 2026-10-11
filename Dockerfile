@@ -1,7 +1,7 @@
 FROM python:3.12-alpine
 
 WORKDIR /app
-COPY server.py index.html core.js ui.js ./
+COPY server.py index.html core.js ui.js favicon.svg favicon.png apple-touch-icon.png ./
 
 # High scores are stored in SQLite; mount a volume at /data to keep them.
 ENV POLYPIT_DB=/data/polypit.db PORT=8000
