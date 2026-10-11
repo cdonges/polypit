@@ -7,7 +7,11 @@
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
   const ui = document.getElementById('ui');
-  const VW = 800, VH = 600;
+  // Logical canvas size; portrait touch layouts pick their own height (see resize()).
+  let VW = 800, VH = 600;
+  let portrait = false;
+  const LANDSCAPE_VIEW = { x: 92, y: 14, w: 520, h: 572 };
+  let VIEW = LANDSCAPE_VIEW;
 
   // ---------- persistence ----------
   const store = {
@@ -88,7 +92,7 @@
   // ---------- touch controls (phones) ----------
   // Detected via media query; ?touch=1 / ?touch=0 in the URL overrides it.
   const touchPref = new URLSearchParams(location.search).get('touch');
-  const touchMode = touchPref === '1' ||
+  let touchMode = touchPref === '1' ||
     (touchPref !== '0' && !!window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
 
   const T_LEFT = [
@@ -153,37 +157,75 @@
 
   // ---------- scaling ----------
   let R = 1;
+  function viewportSize() {
+    const vv = window.visualViewport;
+    return [Math.round(vv ? vv.width : window.innerWidth), Math.round(vv ? vv.height : window.innerHeight)];
+  }
   function resize() {
     const FOOT = 24; // strip reserved for the source link
-    const w = window.innerWidth, h = window.innerHeight;
+    const [w, h] = viewportSize();
     let areaW = w, areaH = h - FOOT;
+    portrait = false;
+    VW = 800; VH = 600; VIEW = LANDSCAPE_VIEW;
     if (touchMode) {
       const boxes = {};
       if (w > h) { // landscape: rotate on the left, move on the right
-        const side = Math.round(Math.max(120, Math.min(210, w * 0.2)));
+        const side = Math.round(Math.max(110, Math.min(200, w * 0.2)));
         areaW = w - 2 * side;
         boxes.left = [6, 6, side - 12, areaH - 12];
         boxes.right = [w - side + 6, 6, side - 12, areaH - 12];
-      } else { // portrait: game on top, controls below
-        const strip = Math.round(Math.min(h * 0.6, Math.max(h * 0.4, h - FOOT - VH * w / VW)));
+      } else { // portrait: game fills the width on top, controls below
+        const strip = Math.round(Math.max(230, Math.min(330, h * 0.36)));
         areaH = h - FOOT - strip;
+        portrait = true;
+        VW = 480;
+        VH = Math.max(480, Math.round(VW * areaH / areaW));
+        VIEW = { x: 44, y: 76, w: VW - 52, h: VH - 76 - 72 };
         boxes.left = [6, areaH + 6, w / 2 - 9, strip - 12];
         boxes.right = [w / 2 + 3, areaH + 6, w / 2 - 9, strip - 12];
       }
       placeTouch(boxes);
     }
     const s = Math.min(areaW / VW, areaH / VH);
+    stage.style.width = canvas.style.width = VW + 'px';
+    stage.style.height = canvas.style.height = VH + 'px';
     stage.style.transform = `translate(${-VW * s / 2}px, ${(areaH - VH * s) / 2}px) scale(${s})`;
     R = s * (window.devicePixelRatio || 1);
     canvas.width = Math.round(VW * R);
     canvas.height = Math.round(VH * R);
   }
+  // Rotation: sizes reported right after the event are often stale, so re-measure a few times.
+  const settle = () => { resize(); setTimeout(resize, 120); setTimeout(resize, 400); };
   window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', settle);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+  if (window.screen && window.screen.orientation) window.screen.orientation.addEventListener('change', settle);
   resize();
+
+  // Phones the media query missed: switch to the touch layout on the first touch.
+  window.addEventListener('touchstart', () => {
+    if (touchMode || touchPref === '0') return;
+    if (Math.min(window.screen.width, window.screen.height) > 1024) return; // not a phone/tablet
+    touchMode = true;
+    buildTouch();
+    resize();
+    showTouch(!!(screen && screen.touch));
+  }, { passive: true });
+
+  // On touch devices, the first tap asks for fullscreen (hides browser chrome).
+  let triedFullscreen = false;
+  document.addEventListener('pointerdown', () => {
+    if (!touchMode || triedFullscreen) return;
+    triedFullscreen = true;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement) {
+      try { const p = req.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch (e) { /* ignore */ }
+    }
+  }, true);
 
   // ---------- drawing helpers ----------
   const D0 = 8; // camera distance in cell units
-  const VIEW = { x: 92, y: 14, w: 520, h: 572 };
 
   function makeView(W, L, D) {
     const cell = Math.min(VIEW.w / W, VIEW.h / L) * 0.98;
@@ -358,7 +400,37 @@
     ctx.fillText(String(value), x + w / 2, y + h / 2 + 1);
   }
 
+  function drawHudPortrait(g, highScore, tag) {
+    hudBox(6, 26, 62, 36, 'LEVEL', g ? g.level : 0, 22);
+    hudBox(76, 26, 130, 36, 'SCORE', g ? g.score : 0, 20);
+    hudBox(214, 26, 124, 36, 'CUBES', g ? g.cubes : 0, 20);
+    hudBox(346, 26, 128, 36, 'HIGH SCORE', highScore, 20);
+    // layer bar beside the pit
+    const bx = 8, by = VIEW.y, bw = 28, bh = VIEW.h;
+    ctx.fillStyle = '#000'; ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#d8d8d8'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+    if (g && g.D) {
+      const sh = bh / g.D, per = g.W * g.L;
+      for (let z = 0; z < g.D; z++) {
+        const y = by + z * sh, n = g.layerCount(z);
+        if (n) { ctx.fillStyle = layerColor(z, g.D, 1); ctx.fillRect(bx + 2, y + 1, (bw - 4) * Math.max(0.25, n / per), sh - 1); }
+      }
+      if (g.phase === 'falling' && g.piece) {
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.strokeRect(bx - 3, by + g.piece.z * sh, bw + 6, g.piece.dims[2] * sh);
+      }
+    }
+    hudBox(6, VH - 40, 226, 32, 'PIT', pitText(setup).replace(/x/g, ' x '), 18);
+    hudBox(244, VH - 40, 230, 32, 'BLOCK SET', SET_NAMES[setup.set].toUpperCase(), 18);
+    if (tag) {
+      ctx.fillStyle = '#ffd84a'; ctx.font = 'bold 13px "Courier New", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.fillText(tag, VW / 2, VH - 56);
+    }
+  }
+
   function drawHud(g, highScore, tag) {
+    if (portrait) { drawHudPortrait(g, highScore, tag); return; }
     // layer bar
     hudBox(18, 30, 56, 40, 'LEVEL', g ? g.level : 0, 24);
     const bx = 30, by = 90, bw = 32, bh = 490;

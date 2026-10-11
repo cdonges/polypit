@@ -60,7 +60,7 @@ Opening `index.html` directly from disk also works; with no server available, sc
 
 ### Phones and tablets
 
-On touch devices (detected via `(hover: none) and (pointer: coarse)`) the game scales to fit the screen and shows on-screen buttons: rotation on the left, movement and DROP on the right (below the game in portrait), plus Pause, Guide, Sound and Quit. Holding a movement button repeats it. Add `?touch=1` or `?touch=0` to the URL to force the touch layout on or off.
+On touch devices (detected via `(hover: none) and (pointer: coarse)`, or on the first touch on a screen up to 1024px) the game fills the screen, asks for fullscreen on the first tap, and re-lays itself out when you rotate the device. Landscape puts the game in the middle with rotation buttons on the left and movement/DROP on the right. Portrait makes the pit fill the width, with the same buttons below it. Pause, Guide, Sound and Quit are small buttons above the rotation controls. Holding a movement button repeats it. Add `?touch=1` or `?touch=0` to the URL to force the touch layout on or off.
 
 ## Gameplay
 
