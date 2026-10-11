@@ -96,7 +96,7 @@
     (touchPref !== '0' && !!window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
 
   const T_LEFT = [
-    ['Pause', 'KeyP', 'util'], ['Guide', 'KeyG', 'util'], ['Sound', 'KeyO', 'util'], ['Quit', 'Escape', 'util'],
+    ['Pause', 'KeyP', 'util'], ['Guide', 'KeyG', 'util'], ['Sound', 'KeyO', 'util'], ['End', 'Escape', 'util'],
     ['X \u21ba', 'KeyQ'], ['X \u21bb', 'KeyA'], ['Y \u21ba', 'KeyW'], ['Y \u21bb', 'KeyS'], ['Z \u21ba', 'KeyE'], ['Z \u21bb', 'KeyD'],
   ];
   const T_RIGHT = [
@@ -589,7 +589,6 @@
         { label: 'Demo', hotkey: 'd', act: () => startDemo() },
         { label: 'Hall of Fame', hotkey: 'f', act: () => setScreen(hofViewScreen()) },
         { label: 'Help', hotkey: 'h', act: () => setScreen(helpScreen()) },
-        { label: 'Quit Game', hotkey: 'q', act: () => setScreen(titleScreen()) },
       ],
       onEsc: () => {},
     });
@@ -717,7 +716,6 @@
             { label: 'Start Game', hotkey: 's', act: () => setScreen(levelScreen()) },
             { label: 'Choose Setup', hotkey: 'c', act: () => setScreen(setupMenu('hof')) },
             { label: 'Main Menu', hotkey: 'm', act: () => setScreen(mainMenu()) },
-            { label: 'Quit Game', hotkey: 'q', act: () => setScreen(titleScreen()) },
           ],
           onEsc: () => setScreen(mainMenu()),
         });
