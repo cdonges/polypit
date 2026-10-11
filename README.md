@@ -58,6 +58,10 @@ Opening `index.html` directly from disk also works; with no server available, sc
 | G | Landing guide on / off (extra, not in the original) |
 | Esc | Abort game / leave menu |
 
+### Phones and tablets
+
+On touch devices (detected via `(hover: none) and (pointer: coarse)`) the game scales to fit the screen and shows on-screen buttons: rotation on the left, movement and DROP on the right (below the game in portrait), plus Pause, Guide, Sound and Quit. Holding a movement button repeats it. Add `?touch=1` or `?touch=0` to the URL to force the touch layout on or off.
+
 ## Gameplay
 
 Blocks fall into a pit; rotate and move them to fill complete layers, which then disappear. The game ends when the stack reaches the top.

@@ -85,13 +85,95 @@
   };
   function onGameEvent(name, arg) { if (SFX[name]) SFX[name](arg); }
 
+  // ---------- touch controls (phones) ----------
+  // Detected via media query; ?touch=1 / ?touch=0 in the URL overrides it.
+  const touchPref = new URLSearchParams(location.search).get('touch');
+  const touchMode = touchPref === '1' ||
+    (touchPref !== '0' && !!window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+
+  const T_LEFT = [
+    ['Pause', 'KeyP', 'util'], ['Guide', 'KeyG', 'util'], ['Sound', 'KeyO', 'util'], ['Quit', 'Escape', 'util'],
+    ['X \u21ba', 'KeyQ'], ['X \u21bb', 'KeyA'], ['Y \u21ba', 'KeyW'], ['Y \u21bb', 'KeyS'], ['Z \u21ba', 'KeyE'], ['Z \u21bb', 'KeyD'],
+  ];
+  const T_RIGHT = [
+    ['\u2196', 'Numpad7', 'move'], ['\u2191', 'Numpad8', 'move'], ['\u2197', 'Numpad9', 'move'],
+    ['\u2190', 'Numpad4', 'move'], null, ['\u2192', 'Numpad6', 'move'],
+    ['\u2199', 'Numpad1', 'move'], ['\u2193', 'Numpad2', 'move'], ['\u2198', 'Numpad3', 'move'],
+    ['DROP', 'Space', 'drop'],
+  ];
+  let touchLeft = null, touchRight = null;
+
+  function fireKey(code) {
+    if (!screen || !screen.key) return;
+    const key = code.startsWith('Key') ? code.slice(3).toLowerCase() : code;
+    screen.key({ code, key, preventDefault() {} });
+  }
+
+  function makeTouchButton(def) {
+    const b = document.createElement('div');
+    if (!def) { return b; }
+    b.className = 'tbtn ' + (def[2] || '');
+    b.textContent = def[0];
+    let delay = null, rep = null;
+    const stop = () => { clearTimeout(delay); clearInterval(rep); delay = rep = null; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      try { b.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      b.classList.add('on');
+      fireKey(def[1]);
+      if (def[2] === 'move') delay = setTimeout(() => { rep = setInterval(() => fireKey(def[1]), 90); }, 320);
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, stop));
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+    return b;
+  }
+
+  function buildTouch() {
+    touchLeft = document.createElement('div');
+    touchLeft.className = 'tpad left';
+    T_LEFT.forEach((d) => touchLeft.appendChild(makeTouchButton(d)));
+    touchRight = document.createElement('div');
+    touchRight.className = 'tpad right';
+    T_RIGHT.forEach((d) => touchRight.appendChild(makeTouchButton(d)));
+    document.body.appendChild(touchLeft);
+    document.body.appendChild(touchRight);
+  }
+  function placeTouch(boxes) {
+    [[touchLeft, boxes.left], [touchRight, boxes.right]].forEach(([el, b]) => {
+      el.style.left = b[0] + 'px'; el.style.top = b[1] + 'px';
+      el.style.width = b[2] + 'px'; el.style.height = b[3] + 'px';
+    });
+  }
+  function showTouch(on) {
+    if (!touchMode) return;
+    touchLeft.style.display = on ? 'grid' : 'none';
+    touchRight.style.display = on ? 'grid' : 'none';
+  }
+  if (touchMode) buildTouch();
+
   // ---------- scaling ----------
   let R = 1;
   function resize() {
     const FOOT = 24; // strip reserved for the source link
-    const availH = window.innerHeight - FOOT;
-    const s = Math.min(window.innerWidth / VW, availH / VH);
-    stage.style.transform = `translate(${-VW * s / 2}px, ${(availH - VH * s) / 2}px) scale(${s})`;
+    const w = window.innerWidth, h = window.innerHeight;
+    let areaW = w, areaH = h - FOOT;
+    if (touchMode) {
+      const boxes = {};
+      if (w > h) { // landscape: rotate on the left, move on the right
+        const side = Math.round(Math.max(120, Math.min(210, w * 0.2)));
+        areaW = w - 2 * side;
+        boxes.left = [6, 6, side - 12, areaH - 12];
+        boxes.right = [w - side + 6, 6, side - 12, areaH - 12];
+      } else { // portrait: game on top, controls below
+        const strip = Math.round(Math.min(h * 0.6, Math.max(h * 0.4, h - FOOT - VH * w / VW)));
+        areaH = h - FOOT - strip;
+        boxes.left = [6, areaH + 6, w / 2 - 9, strip - 12];
+        boxes.right = [w / 2 + 3, areaH + 6, w / 2 - 9, strip - 12];
+      }
+      placeTouch(boxes);
+    }
+    const s = Math.min(areaW / VW, areaH / VH);
+    stage.style.transform = `translate(${-VW * s / 2}px, ${(areaH - VH * s) / 2}px) scale(${s})`;
     R = s * (window.devicePixelRatio || 1);
     canvas.width = Math.round(VW * R);
     canvas.height = Math.round(VH * R);
@@ -319,8 +401,8 @@
       ctx.fillText(tag, rx + rw / 2, 520);
     }
     ctx.fillStyle = '#666'; ctx.font = '11px "Courier New", monospace';
-    ctx.fillText(`G: guide ${ghost ? 'on' : 'off'}`, rx + rw / 2, 560);
-    ctx.fillText(`O: sound ${setup.sound ? 'on' : 'off'}`, rx + rw / 2, 576);
+    if (!touchMode) ctx.fillText(`G: guide ${ghost ? 'on' : 'off'}`, rx + rw / 2, 560);
+    if (!touchMode) ctx.fillText(`O: sound ${setup.sound ? 'on' : 'off'}`, rx + rw / 2, 576);
   }
 
   function banner(text, sub) {
@@ -340,6 +422,7 @@
     if (screen && screen.leave) screen.leave();
     screen = s;
     ui.innerHTML = '';
+    showTouch(!!s.touch);
     if (s.enter) s.enter();
   }
 
@@ -368,6 +451,7 @@
       sel = i;
       const it = items()[i];
       SFX.menu();
+      idleReset();
       if (it.act) it.act();
       if (screen === me) render();
     }
@@ -410,9 +494,10 @@
   function titleScreen() {
     const el = document.createElement('div');
     el.innerHTML = '<div class="panel" style="text-align:center"><div class="logo"><div class="b">POLY</div><div class="o">PIT</div></div>' +
-      '<div>3-D action and strategy</div><div class="blink">press any key</div>' +
+      '<div>3-D action and strategy</div><div class="blink">' + (touchMode ? 'tap to start' : 'press any key') + '</div>' +
       '<div class="hint">In the spirit of Blockout (California Dreams, 1989)</div></div>';
     return {
+      touchTap: true,
       enter() { ui.appendChild(el.firstChild); },
       key(e) { if (/^(Shift|Control|Alt|Meta)/.test(e.code)) return false; setScreen(mainMenu()); return true; },
       draw() { drawBackdrop(); },
@@ -520,6 +605,7 @@
       '<tr><td>Esc</td><td>abort the game / leave menu</td></tr>' +
       '</table><div class="hint">Fill whole layers to clear them. Don’t let the stack reach the top.<br>Press any key to return.</div>';
     return {
+      touchTap: true,
       enter() { ui.appendChild(el); },
       key() { setScreen(mainMenu()); return true; },
       draw() { drawBackdrop(); },
@@ -628,7 +714,7 @@
         const r = list[n];
         html += `<tr><td>${n + 1}.</td><td>${r ? esc(r.name || '---') : ''}</td><td class="r">${r ? r.score : ''}</td></tr>`;
       }
-      html += `</table><div class="hint">\u2190 \u2192 other setups \u00b7 any other key: back (${i + 1}/${views.length})</div>`;
+      html += `</table><div class="hint">\u2190 \u2192 or click: other setups \u00b7 any other key: back (${i + 1}/${views.length})</div>`;
       el.innerHTML = html;
     }
     function show() {
@@ -647,7 +733,7 @@
       },
       draw() { drawBackdrop(); },
     };
-    el.addEventListener('click', () => setScreen(mainMenu()));
+    el.addEventListener('click', () => { if (i + 1 < views.length) { i++; show(); } else setScreen(mainMenu()); });
     return me;
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -671,6 +757,8 @@
       refreshHof(setup).then(() => { if (screen === s) setScreen(hofScreen(g.score, g.cubes, gameId)); });
     };
     const s = {
+      get touch() { return mode !== 'demo'; },
+      get touchTap() { return mode === 'demo' || (!!g && g.phase === 'over'); },
       enter() {
         g = newGame();
         hof = (loadHof(setup)[0] || { score: 0 }).score;
@@ -742,9 +830,9 @@
       },
       draw() {
         view = drawPit(g, ghost && mode !== 'demo');
-        drawHud(g, Math.max(hof, g.score), mode === 'practice' ? 'PRACTICE' : mode === 'demo' ? 'DEMO – press any key' : '');
-        if (paused) banner('PAUSED', 'press P to resume');
-        else if (g.phase === 'over' && mode !== 'demo') banner('GAME OVER', 'press Enter');
+        drawHud(g, Math.max(hof, g.score), mode === 'practice' ? 'PRACTICE' : mode === 'demo' ? (touchMode ? 'DEMO – tap to exit' : 'DEMO – press any key') : '');
+        if (paused) banner('PAUSED', touchMode ? 'tap Pause to resume' : 'press P to resume');
+        else if (g.phase === 'over' && mode !== 'demo') banner('GAME OVER', touchMode ? 'tap to continue' : 'press Enter');
       },
     };
     return s;
@@ -763,10 +851,19 @@
     const r = canvas.getBoundingClientRect();
     return [(e.clientX - r.left) / r.width * VW, (e.clientY - r.top) / r.height * VH];
   }
-  canvas.addEventListener('mousemove', (e) => { if (screen && screen.mouse) { const p = canvasPoint(e); screen.mouse('move', p[0], p[1]); } });
-  canvas.addEventListener('mousedown', (e) => { if (screen && screen.mouse) { const p = canvasPoint(e); screen.mouse('down', p[0], p[1]); e.preventDefault(); } });
-  ui.addEventListener('mousedown', (e) => { if (screen && screen.mouse && e.target === ui) { const p = canvasPoint(e); screen.mouse('down', p[0], p[1]); } });
-  ui.addEventListener('mousemove', (e) => { if (screen && screen.mouse && e.target === ui) { const p = canvasPoint(e); screen.mouse('move', p[0], p[1]); } });
+  canvas.addEventListener('mousemove', (e) => { if (!touchMode && screen && screen.mouse) { const p = canvasPoint(e); screen.mouse('move', p[0], p[1]); } });
+  canvas.addEventListener('mousedown', (e) => { if (!touchMode && screen && screen.mouse) { const p = canvasPoint(e); screen.mouse('down', p[0], p[1]); e.preventDefault(); } });
+  ui.addEventListener('mousedown', (e) => { if (!touchMode && screen && screen.mouse && e.target === ui) { const p = canvasPoint(e); screen.mouse('down', p[0], p[1]); } });
+  ui.addEventListener('mousemove', (e) => { if (!touchMode && screen && screen.mouse && e.target === ui) { const p = canvasPoint(e); screen.mouse('move', p[0], p[1]); } });
+
+  // Touch devices: tapping the play field / empty overlay acts as "any key" where the screen asks for it.
+  const tapHandler = (e) => {
+    if (!touchMode || !screen || !screen.touchTap) return;
+    if (e.target.closest && e.target.closest('.item, input')) return;
+    screen.key({ code: 'Enter', key: 'Enter', preventDefault() {} });
+  };
+  canvas.addEventListener('pointerdown', tapHandler);
+  ui.addEventListener('pointerdown', tapHandler);
 
   let last = performance.now();
   function frame(now) {
