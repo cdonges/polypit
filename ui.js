@@ -88,8 +88,10 @@
   // ---------- scaling ----------
   let R = 1;
   function resize() {
-    const s = Math.min(window.innerWidth / VW, window.innerHeight / VH);
-    stage.style.transform = `translate(${-VW * s / 2}px, ${-VH * s / 2}px) scale(${s})`;
+    const FOOT = 24; // strip reserved for the source link
+    const availH = window.innerHeight - FOOT;
+    const s = Math.min(window.innerWidth / VW, availH / VH);
+    stage.style.transform = `translate(${-VW * s / 2}px, ${(availH - VH * s) / 2}px) scale(${s})`;
     R = s * (window.devicePixelRatio || 1);
     canvas.width = Math.round(VW * R);
     canvas.height = Math.round(VH * R);
