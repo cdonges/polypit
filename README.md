@@ -25,6 +25,8 @@ Or with Compose (see [compose.yml](compose.yml)):
 docker compose up --build
 ```
 
+The database is stored in `./data/polypit.db` (a bind mount next to `compose.yml`).
+
 The submitter's IP address is stored with each score in the `ip` column (never returned by the API). If you run behind a reverse proxy, set `TRUST_PROXY=1` so the address from `X-Forwarded-For` is recorded instead of the proxy's; only do this when the proxy is the sole way in, otherwise clients can spoof it. Note that IP addresses are personal data in some jurisdictions.
 
 Example nginx location for the proxy (the sample [compose.yml](compose.yml) sets `TRUST_PROXY=1` and binds the container to `127.0.0.1` only):

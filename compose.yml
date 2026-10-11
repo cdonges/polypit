@@ -13,8 +13,6 @@ services:
       TRUST_PROXY: "1"
       POLYPIT_DB: /data/polypit.db
     volumes:
-      - polypit-data:/data
+      # SQLite database lives in ./data next to this file
+      - ./data:/data
     restart: unless-stopped
-
-volumes:
-  polypit-data:
